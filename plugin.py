@@ -81,9 +81,12 @@ class IndieGalaPlugin(Plugin):
             if not line.startswith('<a'):
                 continue
             game_line = line.split('</a>')[0]
-            game_name = html.unescape(game_line.split('>')[1])
+            game_string = game_line.split('>')[1]
+            game_name = html.unescape(game_string)
+            # TODO something better for the title - maybe the URL slug?
+            game_id = game_string
             yield Game(
-                game_id=game_name,
+                game_id=game_id,
                 game_title=game_name,
                 license_info=LicenseInfo(LicenseType.SinglePurchase),
                 dlcs=[]
