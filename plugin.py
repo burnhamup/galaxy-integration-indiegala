@@ -1,5 +1,5 @@
+import html
 import json
-import logging
 import sys
 
 from galaxy.api.plugin import Plugin, create_and_run_plugin
@@ -37,7 +37,6 @@ class IndieGalaPlugin(Plugin):
 
     # implement methods
     async def authenticate(self, stored_credentials=None):
-        logging.debug("Calling authenticate")
         if not stored_credentials:
             return NextStep("web_session", AUTH_PARAMS)
         self.session_cookie = stored_credentials
@@ -56,8 +55,8 @@ class IndieGalaPlugin(Plugin):
         return await self.get_user_info()
 
     async def get_owned_games(self):
-        html = await self.retrieve_showcase_html()
-        games = [game for game in self.parse_html_into_games(html)]
+        raw_html = await self.retrieve_showcase_html()
+        games = [game for game in self.parse_html_into_games(raw_html)]
         return games
 
     async def get_user_info(self):
@@ -76,13 +75,13 @@ class IndieGalaPlugin(Plugin):
         data = json.loads(text)
         return data['html']
 
-    def parse_html_into_games(self, html):
-        lines = html.split('<div class=\"col-xs-4\">\r\n\t\t\t\t\t')
+    def parse_html_into_games(self, raw_html):
+        lines = raw_html.split('<div class=\"col-xs-4\">\r\n\t\t\t\t\t')
         for line in lines:
             if not line.startswith('<a'):
                 continue
             game_line = line.split('</a>')[0]
-            game_name = game_line.split('>')[1]
+            game_name = html.unescape(game_line.split('>')[1])
             yield Game(
                 game_id=game_name,
                 game_title=game_name,
