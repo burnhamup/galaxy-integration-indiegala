@@ -11,10 +11,10 @@ from galaxy.http import HttpClient
 
 AUTH_PARAMS = {
     "window_title": "Login to Indie Gala",
-    "window_width": 400,
-    "window_height": 680,
+    "window_width": 1000,
+    "window_height": 800,
     "start_uri": f"https://www.indiegala.com/login",
-    "end_uri_regex": r"https://www\.indiegala\.com"
+    "end_uri_regex": r"^https://www\.indiegala\.com/"
 }
 
 VERSION = "0.1"
@@ -41,7 +41,7 @@ class IndieGalaPlugin(Plugin):
         if not stored_credentials:
             return NextStep("web_session", AUTH_PARAMS)
         self.session_cookie = stored_credentials
-        return self.get_user_info()
+        return await self.get_user_info()
 
     async def pass_login_credentials(self, step, credentials, cookies):
         """Called just after CEF authentication (called as NextStep by authenticate)"""
@@ -53,7 +53,7 @@ class IndieGalaPlugin(Plugin):
                 break
         self.store_credentials(session_cookie)
         self.session_cookie = session_cookie
-        return self.get_user_info()
+        return await self.get_user_info()
 
     async def get_owned_games(self):
         html = await self.retrieve_showcase_html()
@@ -71,7 +71,6 @@ class IndieGalaPlugin(Plugin):
     async def retrieve_showcase_html(self):
         if not self.session_cookie:
             raise AuthenticationRequired()
-
         response = await self.http_client.request('get', SHOWCASE_URL, cookies=self.session_cookie, allow_redirects=False)
         text = await response.text()
         data = json.loads(text)
@@ -84,7 +83,6 @@ class IndieGalaPlugin(Plugin):
                 continue
             game_line = line.split('</a>')[0]
             game_name = game_line.split('>')[1]
-            logging.debug(game_name)
             yield Game(
                 game_id=game_name,
                 game_title=game_name,
