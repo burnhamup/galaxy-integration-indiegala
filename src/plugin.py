@@ -8,6 +8,8 @@ from galaxy.api.types import NextStep, Authentication, Game, LicenseInfo
 from galaxy.api.errors import AuthenticationRequired
 from galaxy.http import HttpClient
 
+with open('manifest.json', 'r') as f:
+    __version__ = json.load(f)['version']
 
 AUTH_PARAMS = {
     "window_title": "Login to Indie Gala",
@@ -17,8 +19,6 @@ AUTH_PARAMS = {
     "end_uri_regex": r"^https://www\.indiegala\.com/"
 }
 
-VERSION = "0.1"
-
 SHOWCASE_URL = 'https://www.indiegala.com/showcase_collection'
 USER_INFO_URL = 'https://www.indiegala.com/get_user_info'
 
@@ -27,7 +27,7 @@ class IndieGalaPlugin(Plugin):
     def __init__(self, reader, writer, token):
         super().__init__(
             Platform.IndieGala,
-            VERSION,
+            __version__,
             reader,
             writer,
             token

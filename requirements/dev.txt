@@ -1,0 +1,2 @@
+-r app.txt
+pytest==5.2.*
