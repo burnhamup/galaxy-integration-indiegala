@@ -1,5 +1,6 @@
 import html
 import json
+from pathlib import Path
 import sys
 
 from galaxy.api.plugin import Plugin, create_and_run_plugin
@@ -8,7 +9,7 @@ from galaxy.api.types import NextStep, Authentication, Game, LicenseInfo
 from galaxy.api.errors import AuthenticationRequired
 from galaxy.http import HttpClient
 
-with open('manifest.json', 'r') as f:
+with open(Path(__file__).parent / 'manifest.json', 'r') as f:
     __version__ = json.load(f)['version']
 
 AUTH_PARAMS = {
