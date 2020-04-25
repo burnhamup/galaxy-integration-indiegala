@@ -5,7 +5,7 @@ GOG Galaxy Integration for Indiegala
 ---
 
 ## Installation
-1. Download [latest release](https://github.com/burnhamup/galaxy-integration-indiegala) of the plugin for your platform.
+1. Download [latest release](https://github.com/burnhamup/galaxy-integration-indiegala/releases/latest) of the plugin for your platform.
 2. Create plugin folder:
 	- Windows: `%LOCALAPPDATA%\GOG.com\Galaxy\plugins\installed\<my-plugin-name>`
 	- MacOS: `${HOME}/Library/Application Support/GOG.com/Galaxy/plugins/installed/<my-plugin-name>`
@@ -30,3 +30,7 @@ for example:
 3. run tests
 
         pytest
+        
+4. install to your local GOG galaxy
+ 
+        inv install
