@@ -1,5 +1,6 @@
 import html
 import json
+import logging
 from pathlib import Path
 import sys
 
@@ -78,6 +79,7 @@ class IndieGalaPlugin(Plugin):
 
     @staticmethod
     def parse_html_into_games(raw_html):
+        # TODO actually parsing this string as HTML will probably be a lot easier and robust
         lines = raw_html.split('<div class=\"col-xs-4\">\r\n\t\t\t\t\t')
         for line in lines:
             if not line.startswith('<a'):
@@ -85,8 +87,8 @@ class IndieGalaPlugin(Plugin):
             game_line = line.split('</a>')[0]
             game_string = game_line.split('>')[1]
             game_name = html.unescape(game_string)
-            # TODO something better for the title - maybe the URL slug?
-            game_id = game_string
+            url_slug = game_line.split('indiegala.com/')[1]
+            game_id = url_slug.split('"')[0]
             yield Game(
                 game_id=game_id,
                 game_title=game_name,
