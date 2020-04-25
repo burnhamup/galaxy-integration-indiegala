@@ -76,7 +76,8 @@ class IndieGalaPlugin(Plugin):
         data = json.loads(text)
         return data['html']
 
-    def parse_html_into_games(self, raw_html):
+    @staticmethod
+    def parse_html_into_games(raw_html):
         lines = raw_html.split('<div class=\"col-xs-4\">\r\n\t\t\t\t\t')
         for line in lines:
             if not line.startswith('<a'):
