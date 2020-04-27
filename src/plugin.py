@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 import sys
 
+from bs4 import BeautifulSoup
 from galaxy.api.plugin import Plugin, create_and_run_plugin
 from galaxy.api.consts import Platform, LicenseType
 from galaxy.api.types import NextStep, Authentication, Game, LicenseInfo
@@ -14,15 +15,16 @@ with open(Path(__file__).parent / 'manifest.json', 'r') as f:
     __version__ = json.load(f)['version']
 
 AUTH_PARAMS = {
-    "window_title": "Login to Indie Gala",
+    "window_title": "Login to Indiegala",
     "window_width": 1000,
     "window_height": 800,
     "start_uri": f"https://www.indiegala.com/login",
     "end_uri_regex": r"^https://www\.indiegala\.com/"
 }
 
-SHOWCASE_URL = 'https://www.indiegala.com/showcase_collection'
-USER_INFO_URL = 'https://www.indiegala.com/get_user_info'
+SHOWCASE_URL = 'https://www.indiegala.com/library/showcase/%s'
+
+HOMEPAGE = 'https://www.indiegala.com'
 
 
 class IndieGalaPlugin(Plugin):
@@ -57,40 +59,45 @@ class IndieGalaPlugin(Plugin):
         return await self.get_user_info()
 
     async def get_owned_games(self):
-        raw_html = await self.retrieve_showcase_html()
-        games = [game for game in self.parse_html_into_games(raw_html)]
+        raw_html = await self.retrieve_showcase_html(1)
+        soup = BeautifulSoup(raw_html)
+        games = [game for game in self.parse_html_into_games(soup)]
+        last_page_link = soup.select('a.profile-private-page-library-pagination-item')[-1]
+        logging.debug(last_page_link)
+        last_page = int(last_page_link['href'].split('/')[-1])
+        for page_number in range(2, last_page+1):
+            raw_html = await self.retrieve_showcase_html(page_number)
+            soup = BeautifulSoup(raw_html)
+            games.extend(self.parse_html_into_games(soup))
         return games
 
     async def get_user_info(self):
         if not self.session_cookie:
             raise AuthenticationRequired()
-        response = await self.http_client.request('get', USER_INFO_URL, cookies=self.session_cookie, allow_redirects=False)
+        response = await self.http_client.request('get', HOMEPAGE, cookies=self.session_cookie, allow_redirects=False)
         text = await response.text()
-        data = json.loads(text)
-        return Authentication(data['profile'], data['email'])
+        soup = BeautifulSoup(text)
+        username_div = soup.select('div.username-text')[0]
+        username = str(username_div.string)
+        return Authentication(username, username)
 
-    async def retrieve_showcase_html(self):
+    async def retrieve_showcase_html(self, n=1):
         if not self.session_cookie:
             raise AuthenticationRequired()
-        response = await self.http_client.request('get', SHOWCASE_URL, cookies=self.session_cookie, allow_redirects=False)
+        response = await self.http_client.request('get', SHOWCASE_URL % n, cookies=self.session_cookie, allow_redirects=False)
         text = await response.text()
-        data = json.loads(text)
-        return data['html']
+        return text
 
     @staticmethod
-    def parse_html_into_games(raw_html):
-        # TODO actually parsing this string as HTML will probably be a lot easier and robust
-        lines = raw_html.split('<div class=\"col-xs-4\">\r\n\t\t\t\t\t')
-        for line in lines:
-            if not line.startswith('<a'):
-                continue
-            game_line = line.split('</a>')[0]
-            game_string = game_line.split('>')[1]
-            game_name = html.unescape(game_string)
-            url_slug = game_line.split('indiegala.com/')[1]
-            game_id = url_slug.split('"')[0]
+    def parse_html_into_games(soup):
+        games = soup.select('a.library-showcase-title')
+        for game in games:
+            game_name = str(game.string)
+            game_href = game['href']
+            url_slug = str(game_href.split('indiegala.com/')[1])
+            logging.debug('Parsed %s, %s', game_name, url_slug)
             yield Game(
-                game_id=game_id,
+                game_id=url_slug,
                 game_title=game_name,
                 license_info=LicenseInfo(LicenseType.SinglePurchase),
                 dlcs=[]
