@@ -22,6 +22,8 @@ elif sys.platform == 'darwin':
     DIST_DIR = os.path.realpath("~/Library/Application Support/GOG.com/Galaxy/plugins/installed")
     PIP_PLATFORM = "macosx_10_13_x86_64"  # @see https://github.com/FriendsOfGalaxy/galaxy-integrations-updater/blob/master/scripts.py
 
+RELEASE_DIR = 'releases'
+
 
 @task
 def build(c, output='build', ziparchive=None):
@@ -70,5 +72,6 @@ def install(c):
 @task
 def pack(c):
     output = "indiegala_" + MANIFEST['guid']
-    build(c, output=output, ziparchive='indiegala_v{}.zip'.format(MANIFEST['version']))
+    release_path = os.path.join(RELEASE_DIR, 'indiegala_v{}.zip'.format(MANIFEST['version']))
+    build(c, output=output, ziparchive=release_path)
     rmtree(output)
