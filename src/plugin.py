@@ -43,23 +43,21 @@ class IndieGalaPlugin(Plugin):
     async def authenticate(self, stored_credentials=None):
         if not stored_credentials:
             return NextStep("web_session", AUTH_PARAMS)
-        self.session_cookie = stored_credentials
+        self.session_cookies = stored_credentials
         return await self.get_user_info()
 
     async def pass_login_credentials(self, step, credentials, cookies):
         """Called just after CEF authentication (called as NextStep by authenticate)"""
-        session_cookie = None
-        for cookie in cookies:
-            if cookie['name'] == 'auth':
-                value = cookie['value']
-                session_cookie = {'auth': value}
-                break
-        self.store_credentials(session_cookie)
-        self.session_cookie = session_cookie
+        session_cookies = {cookie['name']: cookie['value'] for cookie in cookies if cookie['name']}
+        self.store_credentials(session_cookies)
+        self.session_cookies = session_cookies
         return await self.get_user_info()
 
     async def get_owned_games(self):
         raw_html = await self.retrieve_showcase_html(1)
+        if '_Incapsula_Resource' in raw_html:
+            self.lost_authentication()
+            return []
         soup = BeautifulSoup(raw_html)
         games = [game for game in self.parse_html_into_games(soup)]
         last_page_link = soup.select('a.profile-private-page-library-pagination-item')[-1]
@@ -67,24 +65,30 @@ class IndieGalaPlugin(Plugin):
         last_page = int(last_page_link['href'].split('/')[-1])
         for page_number in range(2, last_page+1):
             raw_html = await self.retrieve_showcase_html(page_number)
+            if '_Incapsula_Resource' in raw_html:
+                self.lost_authentication()
+                break
             soup = BeautifulSoup(raw_html)
             games.extend(self.parse_html_into_games(soup))
         return games
 
     async def get_user_info(self):
-        if not self.session_cookie:
+        if not self.session_cookies:
             raise AuthenticationRequired()
-        response = await self.http_client.request('get', HOMEPAGE, cookies=self.session_cookie, allow_redirects=False)
+        response = await self.http_client.request('get', HOMEPAGE, cookies=self.session_cookies, allow_redirects=False)
         text = await response.text()
+        if '_Incapsula_Resource' in text:
+            self.lost_authentication()
+            return None
         soup = BeautifulSoup(text)
         username_div = soup.select('div.username-text')[0]
         username = str(username_div.string)
         return Authentication(username, username)
 
     async def retrieve_showcase_html(self, n=1):
-        if not self.session_cookie:
+        if not self.session_cookies:
             raise AuthenticationRequired()
-        response = await self.http_client.request('get', SHOWCASE_URL % n, cookies=self.session_cookie, allow_redirects=False)
+        response = await self.http_client.request('get', SHOWCASE_URL % n, cookies=self.session_cookies, allow_redirects=False)
         text = await response.text()
         return text
 
