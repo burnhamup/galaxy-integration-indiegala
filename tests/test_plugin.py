@@ -1,25 +1,15 @@
-import json
+
 from unittest import TestCase
 
-from galaxy.api.consts import LicenseType
-from galaxy.api.types import Game, LicenseInfo
-
-from src.plugin import IndieGalaPlugin
+from src.plugin import END_URI_REGEX
 
 
 class TestIndieGalaPlugin(TestCase):
-    def test_parse_html_into_games(self):
-        self.maxDiff = None
-        with open('fixtures/showcase.json', 'r') as fixture:
-            raw_response = fixture.read()
-        data = json.loads(raw_response)
+    def test_end_uri_regex(self):
+        self.assertRegex('https://www.indiegala.com/', END_URI_REGEX)
+        self.assertRegex('https://www.indiegala.com', END_URI_REGEX)
+        self.assertRegex('https://www.indiegala.com#', END_URI_REGEX)
+        self.assertRegex('https://www.indiegala.com/#_=_', END_URI_REGEX)
+        self.assertNotRegex('https://www.indiegala.com/login', END_URI_REGEX)
 
-        actual_games = [game for game in IndieGalaPlugin.parse_html_into_games(data['html'])]
-        expected_games = [
-            Game('survivalist', 'Survivalist', [], LicenseInfo(LicenseType.SinglePurchase)),
-            Game('galactic-missile-defense', 'Galactic Missile Defense', [], LicenseInfo(LicenseType.SinglePurchase)),
-            Game('super-destronaut', 'Super Destronaut', [], LicenseInfo(LicenseType.SinglePurchase)),
-            Game('the-fan', 'TheFan', [], LicenseInfo(LicenseType.SinglePurchase)),
-        ]
-        # Actually asserts that the lists have the same items, but they don't have to be in the same order
-        self.assertCountEqual(expected_games, actual_games)
+

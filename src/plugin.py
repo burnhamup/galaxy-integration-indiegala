@@ -1,4 +1,3 @@
-import html
 import json
 import logging
 from pathlib import Path
@@ -14,12 +13,14 @@ from galaxy.http import HttpClient
 with open(Path(__file__).parent / 'manifest.json', 'r') as f:
     __version__ = json.load(f)['version']
 
+END_URI_REGEX = r"^https://www\.indiegala\.com/?(#.*)?$"
+
 AUTH_PARAMS = {
     "window_title": "Login to Indiegala",
     "window_width": 1000,
     "window_height": 800,
     "start_uri": f"https://www.indiegala.com/login",
-    "end_uri_regex": r"^https://www\.indiegala\.com/"
+    "end_uri_regex": END_URI_REGEX,
 }
 
 SHOWCASE_URL = 'https://www.indiegala.com/library/showcase/%s'
@@ -54,23 +55,18 @@ class IndieGalaPlugin(Plugin):
         return await self.get_user_info()
 
     async def get_owned_games(self):
-        raw_html = await self.retrieve_showcase_html(1)
-        if '_Incapsula_Resource' in raw_html:
-            self.lost_authentication()
-            return []
-        soup = BeautifulSoup(raw_html)
-        games = [game for game in self.parse_html_into_games(soup)]
-        last_page_link = soup.select('a.profile-private-page-library-pagination-item')[-1]
-        logging.debug(last_page_link)
-        last_page = int(last_page_link['href'].split('/')[-1])
-        for page_number in range(2, last_page+1):
-            raw_html = await self.retrieve_showcase_html(page_number)
+        page = 1
+        games = []
+        while True:
+            raw_html = await self.retrieve_showcase_html(page)
+            if 'Your showcase list is actually empty.' in raw_html:
+                return games
             if '_Incapsula_Resource' in raw_html:
                 self.lost_authentication()
-                break
+                raise AuthenticationRequired()
             soup = BeautifulSoup(raw_html)
             games.extend(self.parse_html_into_games(soup))
-        return games
+            page += 1
 
     async def get_user_info(self):
         if not self.session_cookies:
@@ -79,7 +75,7 @@ class IndieGalaPlugin(Plugin):
         text = await response.text()
         if '_Incapsula_Resource' in text:
             self.lost_authentication()
-            return None
+            raise AuthenticationRequired()
         soup = BeautifulSoup(text)
         username_div = soup.select('div.username-text')[0]
         username = str(username_div.string)

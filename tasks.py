@@ -57,6 +57,13 @@ def build(c, output='build', ziparchive=None):
         print('--> Compressing to {}'.format(ziparchive))
         zip_folder_to_file(output, ziparchive)
 
+@task
+def hotfix(c):
+    # This just overwrites the python files in the install directory. Useful if the plugin has crashed and you want to
+    # update it without having to restart GOG Galaxy or disconnect the plugin
+    dist_path = os.path.join(DIST_DIR, "indiegala_" + MANIFEST['guid'])
+    copy_tree("src", dist_path)
+
 
 @task
 def test(c):
