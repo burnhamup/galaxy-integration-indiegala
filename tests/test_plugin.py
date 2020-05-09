@@ -10,6 +10,8 @@ class TestIndieGalaPlugin(TestCase):
         self.assertRegex('https://www.indiegala.com', END_URI_REGEX)
         self.assertRegex('https://www.indiegala.com#', END_URI_REGEX)
         self.assertRegex('https://www.indiegala.com/#_=_', END_URI_REGEX)
+        self.assertRegex('https://www.indiegala.com/library', END_URI_REGEX)
+        self.assertRegex('https://www.indiegala.com/library#_=_', END_URI_REGEX)
         self.assertNotRegex('https://www.indiegala.com/login', END_URI_REGEX)
 
 

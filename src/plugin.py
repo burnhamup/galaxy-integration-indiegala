@@ -13,13 +13,22 @@ from galaxy.http import HttpClient
 with open(Path(__file__).parent / 'manifest.json', 'r') as f:
     __version__ = json.load(f)['version']
 
-END_URI_REGEX = r"^https://www\.indiegala\.com/?(#.*)?$"
+END_URI_REGEX = r"^https://www\.indiegala\.com/?(library)?(#.*)?$"
 
 AUTH_PARAMS = {
     "window_title": "Login to Indiegala",
     "window_width": 1000,
     "window_height": 800,
     "start_uri": f"https://www.indiegala.com/login",
+    "end_uri_regex": END_URI_REGEX,
+}
+
+# To hopefully be shown when either the IP check or the Captcha appears
+SECURITY_AUTH_PARAMS = {
+    "window_title": "Indiegala Security Check",
+    "window_width": 1000,
+    "window_height": 800,
+    "start_uri": f"https://www.indiegala.com/library",
     "end_uri_regex": END_URI_REGEX,
 }
 
@@ -45,7 +54,10 @@ class IndieGalaPlugin(Plugin):
         if not stored_credentials:
             return NextStep("web_session", AUTH_PARAMS)
         self.session_cookies = stored_credentials
-        return await self.get_user_info()
+        try:
+            return await self.get_user_info()
+        except AuthenticationRequired:
+            return NextStep("web_session", AUTH_PARAMS)
 
     async def pass_login_credentials(self, step, credentials, cookies):
         """Called just after CEF authentication (called as NextStep by authenticate)"""
@@ -61,7 +73,12 @@ class IndieGalaPlugin(Plugin):
             raw_html = await self.retrieve_showcase_html(page)
             if 'Your showcase list is actually empty.' in raw_html:
                 return games
+            if 'Profile locked' in raw_html:
+                logging.debug('IP check required')
+                self.lost_authentication()
+                raise AuthenticationRequired()
             if '_Incapsula_Resource' in raw_html:
+                logging.debug('Incapsula challenge on showcase page %s', page)
                 self.lost_authentication()
                 raise AuthenticationRequired()
             soup = BeautifulSoup(raw_html)
@@ -74,7 +91,11 @@ class IndieGalaPlugin(Plugin):
         response = await self.http_client.request('get', HOMEPAGE, cookies=self.session_cookies, allow_redirects=False)
         text = await response.text()
         if '_Incapsula_Resource' in text:
-            self.lost_authentication()
+            logging.debug('Incapsula challenge on get_user_info')
+            # TODO try returning a NextStep() to open a browser. Can I open a next step to /library?
+            raise AuthenticationRequired()
+        if 'Profile locked' in text:
+            logging.debug('IP check required')
             raise AuthenticationRequired()
         soup = BeautifulSoup(text)
         username_div = soup.select('div.username-text')[0]
