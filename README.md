@@ -3,6 +3,13 @@
 GOG Galaxy Integration for Indiegala
 
 ---
+## Known Issues
+Only works with games listed in your showcase: https://www.indiegala.com/library/showcase
+
+I don't have a great handle on playing nicely with the various security systems of IndieGala. It is recommended that you login and visit https://www.indiegala.com/library before using this plugin to make sure that you are able to verify your IP address. 
+
+After a few hours or days the plugin may disconnect because of captchas from IndieGala. The plugin should prompt you to login again.
+
 
 ## Installation
 1. Download [latest release](https://github.com/burnhamup/galaxy-integration-indiegala/releases/latest) of the plugin for your platform.
