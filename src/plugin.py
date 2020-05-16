@@ -88,7 +88,8 @@ class IndieGalaPlugin(Plugin):
             try:
                 raw_html = await self.retrieve_showcase_html(page)
             except AuthenticationRequired:
-                return NextStep("web_session", SECURITY_AUTH_PARAMS, cookies=self.http_client.get_next_step_cookies(), js=SECURITY_JS)
+                self.lost_authentication()
+                raise
             if 'Your showcase list is actually empty.' in raw_html:
                 return games
             soup = BeautifulSoup(raw_html)
