@@ -2,6 +2,7 @@ import logging
 
 import aiohttp
 from galaxy.api.errors import AuthenticationRequired
+from galaxy.api.types import Cookie
 from galaxy.http import create_client_session
 from yarl import URL
 
@@ -50,3 +51,9 @@ class HTTPClient(object):
 
     def update_cookies(self, cookies):
         self.cookieJar.update_cookies(cookies)
+
+    def get_next_step_cookies(self):
+        return [Cookie(cookie.key, cookie.value) for cookie in self.cookieJar]
+
+    async def close(self):
+        await self.session.close()

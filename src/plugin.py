@@ -9,12 +9,12 @@ from galaxy.api.consts import Platform, LicenseType
 from galaxy.api.types import NextStep, Authentication, Game, LicenseInfo
 from galaxy.api.errors import AuthenticationRequired
 
-from .http import HTTPClient
+from http_client import HTTPClient
 
 with open(Path(__file__).parent / 'manifest.json', 'r') as f:
     __version__ = json.load(f)['version']
 
-END_URI_REGEX = r"^https://www\.indiegala\.com/?(library)?(#.*)?$"
+END_URI_REGEX = r"^https://www\.indiegala\.com/?(#.*)?$"
 
 AUTH_PARAMS = {
     "window_title": "Login to Indiegala",
@@ -33,6 +33,15 @@ SECURITY_AUTH_PARAMS = {
     "end_uri_regex": END_URI_REGEX,
 }
 
+SECURITY_JS = {r"^https://www\.indiegala\.com/.*": [
+    r'''
+        if (!document.getElementsByTagName('title')[0].text.includes("Profile locked") &&
+            !document.getElementsByTagName('iframe')[0].src.includes('_Incapsula')) {
+            window.location.href = "/";
+        }
+    '''
+]}
+
 SHOWCASE_URL = 'https://www.indiegala.com/library/showcase/%s'
 
 HOMEPAGE = 'https://www.indiegala.com'
@@ -50,6 +59,9 @@ class IndieGalaPlugin(Plugin):
         self.http_client = HTTPClient(self.store_credentials)
         self.session_cookie = None
 
+    async def shutdown(self):
+        await self.http_client.close()
+
     # implement methods
     async def authenticate(self, stored_credentials=None):
         if not stored_credentials:
@@ -58,13 +70,16 @@ class IndieGalaPlugin(Plugin):
         try:
             return await self.get_user_info()
         except AuthenticationRequired:
-            return NextStep("web_session", AUTH_PARAMS)
+            return NextStep("web_session", SECURITY_AUTH_PARAMS, cookies=self.http_client.get_next_step_cookies(), js=SECURITY_JS)
 
     async def pass_login_credentials(self, step, credentials, cookies):
         """Called just after CEF authentication (called as NextStep by authenticate)"""
         session_cookies = {cookie['name']: cookie['value'] for cookie in cookies if cookie['name']}
         self.http_client.update_cookies(session_cookies)
-        return await self.get_user_info()
+        try:
+            return await self.get_user_info()
+        except AuthenticationRequired:
+            return NextStep("web_session", SECURITY_AUTH_PARAMS, cookies=self.http_client.get_next_step_cookies(), js=SECURITY_JS)
 
     async def get_owned_games(self):
         page = 1
@@ -73,8 +88,7 @@ class IndieGalaPlugin(Plugin):
             try:
                 raw_html = await self.retrieve_showcase_html(page)
             except AuthenticationRequired:
-                self.lost_authentication()
-                raise
+                return NextStep("web_session", SECURITY_AUTH_PARAMS, cookies=self.http_client.get_next_step_cookies(), js=SECURITY_JS)
             if 'Your showcase list is actually empty.' in raw_html:
                 return games
             soup = BeautifulSoup(raw_html)
