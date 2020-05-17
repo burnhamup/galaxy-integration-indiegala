@@ -40,7 +40,7 @@ SECURITY_JS = {r"^https://www\.indiegala\.com/.*": [
             window.location.href = "/";
         }
     '''
-]}
+]} # Redirects to the homepage if neither of the security checks are present
 
 SHOWCASE_URL = 'https://www.indiegala.com/library/showcase/%s'
 
