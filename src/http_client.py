@@ -8,7 +8,7 @@ from yarl import URL
 
 
 class CookieJar(aiohttp.CookieJar):
-    # Inspired by from https://github.com/TouwaStar/Galaxy_Plugin_Bethesda/blob/master/betty/http_client.py
+    # Inspired by https://github.com/TouwaStar/Galaxy_Plugin_Bethesda/blob/master/betty/http_client.py
     def __init__(self):
         super().__init__()
         self._cookies_updated_callback = None

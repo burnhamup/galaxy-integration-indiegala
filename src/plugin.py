@@ -35,12 +35,11 @@ SECURITY_AUTH_PARAMS = {
 
 SECURITY_JS = {r"^https://www\.indiegala\.com/.*": [
     r'''
-        if (!document.getElementsByTagName('title')[0].text.includes("Profile locked") &&
-            !document.getElementsByTagName('iframe')[0].src.includes('_Incapsula')) {
+        if (document.getElementsByTagName('title')[0].text.includes("Library | Indiegala")) {
             window.location.href = "/";
         }
     '''
-]} # Redirects to the homepage if neither of the security checks are present
+]}  # Redirects to the homepage if the library loads normally
 
 SHOWCASE_URL = 'https://www.indiegala.com/library/showcase/%s'
 
