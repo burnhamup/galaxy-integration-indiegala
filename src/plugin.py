@@ -1,5 +1,4 @@
 import json
-import logging
 from pathlib import Path
 import sys
 
@@ -91,7 +90,7 @@ class IndieGalaPlugin(Plugin):
                 license_info=LicenseInfo(LicenseType.SinglePurchase),
                 dlcs=[]
             )
-        result.append(game)
+            result.append(game)
         return result
 
     async def get_user_info(self):
