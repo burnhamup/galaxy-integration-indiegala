@@ -30,7 +30,10 @@ class HTTPClient(object):
     def __init__(self, store_credentials):
         self.cookieJar = CookieJar()
         self.cookieJar.set_cookies_updated_callback(store_credentials)
-        self.session = create_client_session(cookie_jar=self.cookieJar)
+        self.session = create_client_session(headers={
+            'User-Agent': 'galaClient',
+        },
+            cookie_jar=self.cookieJar)
 
     async def get(self, url):
         """

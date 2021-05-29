@@ -3,7 +3,6 @@ import logging
 from pathlib import Path
 import sys
 
-from bs4 import BeautifulSoup
 from galaxy.api.plugin import Plugin, create_and_run_plugin
 from galaxy.api.consts import Platform, LicenseType
 from galaxy.api.types import NextStep, Authentication, Game, LicenseInfo
@@ -41,9 +40,9 @@ SECURITY_JS = {r"^https://www\.indiegala\.com/.*": [
     '''
 ]}  # Redirects to the homepage if the library loads normally
 
-SHOWCASE_URL = 'https://www.indiegala.com/library/showcase/%s'
-
 HOMEPAGE = 'https://www.indiegala.com'
+
+SHOWCASE_API = 'https://www.indiegala.com/login_new/user_info'
 
 
 class IndieGalaPlugin(Plugin):
@@ -81,44 +80,25 @@ class IndieGalaPlugin(Plugin):
             return NextStep("web_session", SECURITY_AUTH_PARAMS, cookies=self.http_client.get_next_step_cookies(), js=SECURITY_JS)
 
     async def get_owned_games(self):
-        page = 1
-        games = []
-        while True:
-            try:
-                raw_html = await self.retrieve_showcase_html(page)
-            except AuthenticationRequired:
-                self.lost_authentication()
-                raise
-            if 'Your showcase list is actually empty.' in raw_html:
-                return games
-            soup = BeautifulSoup(raw_html)
-            games.extend(self.parse_html_into_games(soup))
-            page += 1
-
-    async def get_user_info(self):
-        text = await self.http_client.get(HOMEPAGE)
-        soup = BeautifulSoup(text)
-        username_div = soup.select('div.username-text')[0]
-        username = str(username_div.string)
-        return Authentication(username, username)
-
-    async def retrieve_showcase_html(self, n=1):
-        return await self.http_client.get(SHOWCASE_URL % n)
-
-    @staticmethod
-    def parse_html_into_games(soup):
-        games = soup.select('a.library-showcase-title')
-        for game in games:
-            game_name = str(game.string)
-            game_href = game['href']
-            url_slug = str(game_href.split('indiegala.com/')[1])
-            logging.debug('Parsed %s, %s', game_name, url_slug)
-            yield Game(
-                game_id=url_slug,
-                game_title=game_name,
+        text = await self.http_client.get(SHOWCASE_API)
+        data = json.loads(text)
+        games_json = data['showcase_content']['content']['user_collection']
+        result = []
+        for game_json in games_json:
+            game = Game(
+                game_id=game_json['prod_slugged_name'],
+                game_title=game_json['prod_name'],
                 license_info=LicenseInfo(LicenseType.SinglePurchase),
                 dlcs=[]
             )
+        result.append(game)
+        return result
+
+    async def get_user_info(self):
+        text = await self.http_client.get(SHOWCASE_API)
+        data = json.loads(text)
+
+        return Authentication(data['_indiegala_user_id'], data['_indiegala_username'])
 
 
 def main():
